@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>NaCena</title>
+<meta name="description" content="Teleprompter para gravar o próprio rosto no iPhone e no iPad">
+<meta name="theme-color" content="#0F1B33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NaCena">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --marinho:#0F1B33; --ouro:#C9A227; --vermelho:#E5484D; --verde:#3DDC84;
+  --fundo:#0B1426; --card:#14213D; --card2:#1B2B4D; --txt:#F3EEDF; --txt2:#A9B3C7; --linha:#2B3B5E;
+  --sombra:0 10px 30px rgba(0,0,0,.35);
+  --caixa-fundo:10,16,30; --caixa-txt:#FFFFFF;
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
+}
+:root[data-tema="claro"]{
+  --fundo:#F6F2E7; --card:#FFFFFF; --card2:#F1EBDA; --txt:#0F1B33; --txt2:#5B6478; --linha:#DCD3BC;
+  --sombra:0 10px 30px rgba(15,27,51,.15);
+  --caixa-fundo:255,255,255; --caixa-txt:#0F1B33;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--fundo);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;touch-action:manipulation}
+body{overflow:hidden}
+button{font:inherit;color:inherit}
+.oculto{display:none!important}
+.tela{position:fixed;inset:0;display:flex;flex-direction:column}
+
+/* ---------- botões ---------- */
+.icone{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--linha);background:var(--card);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
+.icone svg{width:22px;height:22px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;border:1.5px solid var(--linha);background:var(--card);cursor:pointer;font-weight:600;font-size:15px}
+.btn.ouro{background:var(--ouro);border-color:var(--ouro);color:#0F1B33}
+.btn.perigo{color:var(--vermelho);border-color:var(--vermelho)}
+.btn svg{width:18px;height:18px}
+.versao{font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--txt2);padding:4px 9px;border:1px solid var(--linha);border-radius:999px;white-space:nowrap}
+.seg{display:inline-flex;border:1.5px solid var(--linha);border-radius:12px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:9px 13px;cursor:pointer;font-size:14px;font-weight:600;color:var(--txt2)}
+.seg button.on{background:var(--ouro);color:#0F1B33}
+.passo{display:inline-flex;align-items:center;gap:8px}
+.passo b{min-width:34px;text-align:center;font-size:18px}
+
+/* ---------- topo das telas comuns ---------- */
+.topo{display:flex;align-items:center;gap:10px;padding:calc(10px + var(--st)) calc(16px + var(--sr)) 10px calc(16px + var(--sl));border-bottom:1px solid var(--linha);background:var(--card)}
+.marca{font-family:Cinzel,Georgia,serif;font-weight:700;font-size:22px;letter-spacing:.04em;color:var(--ouro);display:flex;align-items:center;gap:8px}
+.marca img{width:30px;height:30px;border-radius:8px}
+.topo .espaco{flex:1}
+.corpo{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px calc(16px + var(--sr)) calc(30px + var(--sb)) calc(16px + var(--sl))}
+.largura{max-width:760px;margin:0 auto}
+h1.tit{font-family:Cinzel,Georgia,serif;font-size:20px;margin:6px 0 14px;color:var(--txt)}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+
+/* ---------- lista de roteiros ---------- */
+.rot-item{background:var(--card);border:1.5px solid var(--linha);border-radius:16px;padding:14px 14px 12px;margin-bottom:12px}
+.rot-item h3{margin:0 0 4px;font-size:17px}
+.rot-item p{margin:0 0 10px;color:var(--txt2);font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rot-item .meta{font-size:12px;color:var(--txt2);margin-bottom:10px}
+.rot-item .linha-bt{display:flex;gap:8px;flex-wrap:wrap}
+.rot-item .btn{padding:9px 13px;font-size:14px}
+.vazio{text-align:center;color:var(--txt2);padding:40px 10px}
+
+/* ---------- editor ---------- */
+.campo{width:100%;border:1.5px solid var(--linha);background:var(--card);color:var(--txt);border-radius:12px;padding:12px 14px;font:inherit;font-size:16px}
+textarea.campo{min-height:52vh;resize:vertical;line-height:1.5}
+.rotulo{display:block;font-size:13px;font-weight:700;color:var(--txt2);margin:14px 0 6px;letter-spacing:.03em}
+.dica{font-size:13px;color:var(--txt2);margin:6px 0 0;line-height:1.4}
+
+/* ---------- câmera ---------- */
+#cam{background:#000;overflow:hidden}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#cam.espelho #video{transform:scaleX(-1)}
+#caixa{position:absolute;z-index:5;border-radius:18px;overflow:hidden;background:rgba(var(--caixa-fundo),var(--op,.45));
+  width:calc(var(--larg,.9) * 100vw);height:calc(var(--alt,.42) * 100vh)}
+#cam[data-lente="topo"] #caixa{top:calc(8px + var(--st));left:50%;transform:translateX(-50%)}
+#cam[data-lente="baixo"] #caixa{bottom:calc(8px + var(--sb));left:50%;transform:translateX(-50%)}
+#cam[data-lente="esq"] #caixa{left:calc(8px + var(--sl));top:50%;transform:translateY(-50%)}
+#cam[data-lente="dir"] #caixa{right:calc(8px + var(--sr));top:50%;transform:translateY(-50%)}
+#rolo{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+#rolo::-webkit-scrollbar{display:none}
+#texto{padding:0 18px;font-size:var(--fs,30px);line-height:1.42;color:var(--caixa-txt);font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+:root[data-tema="claro"] #texto{text-shadow:0 1px 2px rgba(255,255,255,.7)}
+#cam.serifa #texto{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;line-height:1.32}
+#texto p{margin:0 0 .55em}
+#faixa{position:absolute;left:0;right:0;top:calc(var(--linha,.36) * 100%);transform:translateY(-50%);height:calc(var(--fs,30px) * 1.6);pointer-events:none;z-index:2;
+  background:rgba(var(--cor),.13);border-top:2px solid rgba(var(--cor),.55);border-bottom:2px solid rgba(var(--cor),.55)}
+#faixa::before{content:"";position:absolute;left:4px;top:50%;transform:translateY(-50%);border:9px solid transparent;border-left:13px solid rgb(var(--cor))}
+#palavra{position:fixed;z-index:6;pointer-events:none;border-radius:8px;background:rgba(var(--cor),.42);box-shadow:0 0 0 3px rgba(var(--cor),.35);transition:left .12s,top .12s,width .12s,height .12s}
+
+/* painel de controles: fica na parte livre da tela */
+#painel{position:absolute;z-index:8;display:flex;flex-direction:column;align-items:center;gap:10px;
+  left:calc(12px + var(--sl));right:calc(12px + var(--sr));bottom:calc(12px + var(--sb))}
+#cam[data-lente="baixo"] #painel{bottom:auto;top:calc(12px + var(--st));flex-direction:column-reverse}
+#cam[data-lente="esq"] #painel{left:calc(var(--larg) * 100vw + 20px + var(--sl))}
+#cam[data-lente="dir"] #painel{right:calc(var(--larg) * 100vw + 20px + var(--sr))}
+.status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;padding:6px 8px;border-radius:999px;background:rgba(0,0,0,.45);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.status .icone{width:36px;height:36px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff}
+.status .icone svg{width:18px;height:18px}
+.status .versao{color:#fff;border-color:rgba(255,255,255,.3)}
+.rec{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px;padding:0 6px;letter-spacing:.03em}
+.rec i{width:10px;height:10px;border-radius:50%;background:#9aa}
+.rec.on i{background:var(--vermelho);animation:pisca 1s infinite}
+@keyframes pisca{50%{opacity:.25}}
+.mic{display:none;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1.5px solid rgba(255,255,255,.3);font-size:12px;font-weight:700;white-space:nowrap}
+#cam.ouve .mic{display:inline-flex}
+.mic svg{width:15px;height:15px}
+.mic .bar{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.mic .bar i{display:block;width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.4);transition:height .08s}
+.mic.voz{border-color:var(--verde);color:var(--verde)}.mic.voz .bar i{background:var(--verde)}
+.mic.erro{border-color:var(--vermelho);color:var(--vermelho)}
+.barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;max-width:100%;padding:8px 10px;background:var(--card);border:1.5px solid var(--ouro);border-radius:18px;box-shadow:var(--sombra);transition:opacity .35s,transform .35s}
+.barra.some{opacity:0;transform:translateY(20px);pointer-events:none}
+#cam[data-lente="baixo"] .barra.some{transform:translateY(-20px)}
+.barra .icone{width:44px;height:44px}
+.barra .play{width:54px;height:54px;background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+.barra .modo{height:44px;padding:0 12px;border-radius:12px;border:1.5px solid var(--linha);background:var(--card2);font-weight:700;font-size:14px;cursor:pointer}
+#gravar{width:76px;height:76px;border-radius:50%;border:4px solid #fff;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#gravar i{display:block;width:58px;height:58px;border-radius:50%;background:var(--vermelho);transition:all .25s}
+#gravar.on i{width:30px;height:30px;border-radius:7px}
+#contagem{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;font-family:Cinzel,Georgia,serif;font-size:34vmin;font-weight:700;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.6);background:rgba(0,0,0,.15)}
+.cobre{position:absolute;inset:0;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:rgba(11,20,38,.88);color:#fff}
+.cobre h2{font-family:Cinzel,Georgia,serif;color:var(--ouro);margin:0;font-size:22px}
+.cobre p{max-width:440px;margin:0;line-height:1.45;color:#dfe4ee}
+/* escolher a borda da câmera */
+#lente-escolha{padding:96px 88px}
+#lente-escolha .borda{position:absolute;background:rgba(201,162,39,.18);border:2px dashed var(--ouro);color:var(--ouro);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#lente-escolha .b-topo{top:calc(6px + var(--st));left:15%;right:15%;height:70px;border-radius:0 0 18px 18px}
+#lente-escolha .b-baixo{bottom:calc(6px + var(--sb));left:15%;right:15%;height:70px;border-radius:18px 18px 0 0}
+#lente-escolha .b-esq{left:calc(6px + var(--sl));top:22%;bottom:22%;width:70px;border-radius:0 18px 18px 0;writing-mode:vertical-rl;transform:rotate(180deg)}
+#lente-escolha .b-dir{right:calc(6px + var(--sr));top:22%;bottom:22%;width:70px;border-radius:18px 0 0 18px;writing-mode:vertical-rl}
+
+/* ---------- prévia ---------- */
+#previa .corpo{display:flex;flex-direction:column;align-items:center}
+#previa-video{width:100%;max-height:58vh;border-radius:16px;background:#000}
+.info{font-size:13px;color:var(--txt2);margin:10px 0 16px;text-align:center}
+
+/* ---------- janela (ajustes etc.) ---------- */
+#modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+#modal-caixa{width:100%;max-width:620px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);color:var(--txt);border-radius:22px 22px 0 0;padding:18px 18px calc(24px + var(--sb));box-shadow:var(--sombra)}
+@media (min-width:700px){#modal{align-items:center}#modal-caixa{border-radius:22px}}
+#modal-caixa h2{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px;font-family:Cinzel,Georgia,serif;font-size:19px;color:var(--ouro)}
+#modal-caixa h3{margin:22px 0 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ouro)}
+.opc{margin:12px 0}
+.opc input[type=range]{width:100%;accent-color:var(--ouro)}
+.cores{display:flex;gap:10px;flex-wrap:wrap}
+.cores button{width:38px;height:38px;border-radius:50%;border:3px solid transparent;cursor:pointer}
+.cores button.on{border-color:var(--txt)}
+.medidor{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--txt2)}
+.medidor .btn{padding:6px 12px}
+.med{position:relative;flex:1;height:12px;border-radius:6px;background:var(--linha);overflow:hidden}
+.med i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--txt2);transition:width .08s}
+.med i.voz{background:var(--verde)}
+.med b{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--ouro)}
+.medidor small{min-width:62px;text-align:right;font-weight:700}
+.diag{font-size:13px;line-height:1.6;color:var(--txt2);background:var(--card2);border-radius:12px;padding:10px 12px}
+.diag b{color:var(--txt)}
+.licenca{white-space:pre-wrap;font-size:11.5px;line-height:1.45;color:var(--txt2);background:var(--card2);border-radius:12px;padding:12px}
+
+/* ---------- avisos ---------- */
+#aviso{position:fixed;z-index:70;left:50%;top:calc(14px + var(--st));transform:translate(-50%,-20px);opacity:0;pointer-events:none;max-width:calc(100vw - 32px);padding:12px 16px;border-radius:14px;background:var(--card);color:var(--txt);border:1.5px solid var(--ouro);box-shadow:var(--sombra);font-size:14px;font-weight:600;text-align:center;transition:opacity .3s,transform .3s}
+#aviso.mostra{opacity:1;transform:translate(-50%,0)}
+#cam:not(.oculto) ~ #aviso{top:50%}
+#nova-versao{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sb));width:calc(100vw - 32px);max-width:520px;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--marinho);color:#fff;border:1.5px solid var(--ouro);box-shadow:var(--sombra)}
+#nova-versao span{flex:1;font-size:14px;line-height:1.35}
+#nova-versao .btn{padding:9px 12px;font-size:14px}
+#nova-versao .fechar{background:transparent;border:0;color:#fff;font-size:22px;cursor:pointer;padding:0 4px}
+</style>
+</head>
+<body>
+
+<!-- ================= TELA 1: ROTEIROS ================= -->
+<section class="tela" id="roteiros">
+  <header class="topo">
+    <div class="marca"><img src="icon-192.png" alt="">NaCena</div>
+    <span class="espaco"></span>
+    <span class="versao" data-versao></span>
+    <button class="icone" data-tema title="Modo claro / escuro"></button>
+    <button class="icone" data-ajustes title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+  <div class="corpo"><div class="largura">
+    <h1 class="tit">Meus roteiros</h1>
+    <div class="acoes">
+      <button class="btn ouro" id="bt-novo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo roteiro</button>
+      <button class="btn" id="bt-abrir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Abrir arquivo (.txt ou .docx)</button>
+      <input type="file" id="arquivo" accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="oculto">
+    </div>
+    <div id="lista"></div>
+  </div></div>
+</section>
+
+<!-- ================= TELA 2: EDITOR ================= -->
+<section class="tela oculto" id="editor">
+  <header class="topo">
+    <button class="icone" id="ed-voltar" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="marca" style="font-size:18px">Roteiro</div>
+    <span class="espaco"></span>
+    <span class="versao" data-versao></span>
+    <button class="icone" data-tema title="Modo claro / escuro"></button>
+  </header>
+  <div class="corpo"><div class="largura">
+    <label class="rotulo" for="ed-titulo">TÍTULO</label>
+    <input class="campo" id="ed-titulo" placeholder="Ex.: Convite para o culto de domingo">
+    <label class="rotulo" for="ed-texto">TEXTO</label>
+    <textarea class="campo" id="ed-texto" placeholder="Escreva ou cole aqui o texto que vai ler na gravação. Deixe uma linha em branco entre os parágrafos."></textarea>
+    <p class="dica" id="ed-conta"></p>
+    <div class="acoes" style="margin-top:14px">
+      <button class="btn ouro" id="ed-gravar">● Salvar e ir para a câmera</button>
+      <button class="btn" id="ed-salvar">Salvar</button>
+      <button class="btn" id="ed-colar">Colar</button>
+    </div>
+  </div></div>
+</section>
+
+<!-- ================= TELA 3: CÂMERA ================= -->
+<section class="tela oculto" id="cam" data-lente="topo">
+  <video id="video" playsinline muted autoplay></video>
+  <div id="caixa">
+    <div id="rolo"><div id="texto"></div></div>
+    <div id="faixa"></div>
+  </div>
+  <div id="palavra" class="oculto"></div>
+  <div id="painel">
+    <div class="status">
+      <button class="icone" id="cam-sair" title="Voltar aos roteiros"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <span class="rec" id="rec"><i></i><span id="rec-tempo">00:00</span></span>
+      <span class="mic" id="mic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="bar"><i></i><i></i><i></i><i></i><i></i></span><span id="mic-rot"></span></span>
+      <span class="versao" data-versao></span>
+      <button class="icone" data-tema title="Modo claro / escuro"></button>
+    </div>
+    <div class="barra" id="barra">
+      <button class="icone" data-tp="voltar" title="Voltar algumas linhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></button>
+      <button class="icone play" data-tp="play" title="Rolar / pausar"></button>
+      <button class="icone" data-tp="avancar" title="Avançar algumas linhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="passo" id="passo-vel" title="Velocidade"><button class="icone" data-tp="vel-">−</button><b id="vel"></b><button class="icone" data-tp="vel+">+</button></div>
+      <button class="modo" data-tp="modo" id="bt-modo" title="Trocar o modo de rolagem"></button>
+      <button class="icone" data-ajustes title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
+    </div>
+    <button id="gravar" title="Gravar / parar"><i></i></button>
+  </div>
+  <div id="contagem" class="oculto"></div>
+  <div id="cam-ativar" class="cobre oculto">
+    <h2>Câmera desligada</h2>
+    <p id="cam-ativar-txt">Toque no botão para ligar a câmera e o microfone.</p>
+    <button class="btn ouro" id="bt-ativar">Ligar a câmera</button>
+    <button class="btn" id="bt-ativar-sair" style="background:transparent;color:#fff">Voltar aos roteiros</button>
+  </div>
+  <div id="lente-escolha" class="cobre oculto">
+    <h2>Onde fica a câmera?</h2>
+    <p>Procure o pontinho escuro da lente frontal, na moldura do aparelho, e toque na <b>borda da tela mais perto dela</b>. O texto vai ficar colado na lente, para o seu olhar parecer natural. Isso é feito uma vez só neste aparelho.</p>
+    <button class="borda b-topo" data-borda="0">Lente aqui em cima</button>
+    <button class="borda b-dir" data-borda="1">Lente aqui à direita</button>
+    <button class="borda b-baixo" data-borda="2">Lente aqui embaixo</button>
+    <button class="borda b-esq" data-borda="3">Lente aqui à esquerda</button>
+  </div>
+</section>
+
+<!-- ================= TELA 4: PRÉVIA ================= -->
+<section class="tela oculto" id="previa">
+  <header class="topo">
+    <div class="marca" style="font-size:18px">Seu vídeo</div>
+    <span class="espaco"></span>
+    <span class="versao" data-versao></span>
+    <button class="icone" data-tema title="Modo claro / escuro"></button>
+  </header>
+  <div class="corpo"><div class="largura" style="display:flex;flex-direction:column;align-items:center">
+    <video id="previa-video" playsinline controls></video>
+    <p class="info" id="previa-info"></p>
+    <div class="acoes" style="justify-content:center">
+      <button class="btn ouro" id="pv-salvar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v14"/></svg>Salvar na Fotos / Compartilhar</button>
+      <button class="btn" id="pv-baixar">Baixar o arquivo</button>
+      <button class="btn" id="pv-denovo">● Gravar de novo</button>
+      <button class="btn" id="pv-sair">Voltar aos roteiros</button>
+    </div>
+    <p class="dica" style="text-align:center">Na janela de compartilhar, escolha <b>Salvar vídeo</b> para ele ir para o app Fotos.</p>
+  </div></div>
+</section>
+
+<div id="modal" class="oculto"><div id="modal-caixa"></div></div>
+<div id="aviso"></div>
+<div id="nova-versao" class="oculto"><span id="nova-versao-txt"></span><button class="btn ouro" id="bt-atualizar-agora">Atualizar agora</button><button class="fechar" id="bt-nova-fechar" title="Depois">×</button></div>
+
+<script>
+/* =================================================================
+   NaCena — teleprompter para gravar o próprio rosto (iPhone e iPad)
+   Bispo Enéas Araújo · github.com/eneas-ena/nacena
+   Modos de rolagem inspirados no Textream (github.com/f/textream,
+   de Fatih Kadir Akın, licença MIT). Escrito do zero em JavaScript.
+   ================================================================= */
+const VERSAO = '0.1.0';
+const PREFIXO_CACHE = 'nacena-';
+
+/* ---------------- utilidades ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function lerLS(k, padrao){ try { const v = localStorage.getItem(k); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } }
+function gravarLS(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+const escapar = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let _av = null;
+function aviso(txt, ms){ const a = $('#aviso'); a.textContent = txt; a.classList.add('mostra'); clearTimeout(_av); _av = setTimeout(() => a.classList.remove('mostra'), ms || 3000); }
+const ICO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICO_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const ICO_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICO_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const ICO_PAUSA = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+
+// iPhone ou iPad? (cada um guarda o próprio tamanho de letra e o próprio formato da caixa)
+const CLASSE = Math.min(screen.width, screen.height) >= 700 ? 'tab' : 'tel';
+
+/* ---------------- ajustes guardados no aparelho ---------------- */
+const CORES = { amarelo: '245,200,66', verde: '61,220,132', azul: '79,163,255', rosa: '255,111,174', laranja: '255,154,60' };
+const SENS = { alta: 2.2, media: 3, baixa: 4.5 };
+const MODOS = { constante: 'Constante', voz: 'Pela voz', palavras: 'Palavra a palavra' };
+const CAIXAS_PADRAO = {
+  'tel-topo': { larg: 0.94, alt: 0.42, linha: 0.36 },
+  'tel-lado': { larg: 0.48, alt: 0.86, linha: 0.42 },
+  'tab-topo': { larg: 0.64, alt: 0.44, linha: 0.36 },
+  'tab-lado': { larg: 0.42, alt: 0.80, linha: 0.42 }
+};
+const CFG_PADRAO = { tema: null, fonte: 'sans', fsTel: 30, fsTab: 44, cor: 'amarelo', opac: 0.45, vel: 8, modo: 'constante', sens: 'media',
+  qualidade: '1080', contagem: true, espelho: true, caixas: {} };
+let CFG = Object.assign({}, CFG_PADRAO, lerLS('nc.cfg', {}));
+CFG.caixas = Object.assign({}, JSON.parse(JSON.stringify(CAIXAS_PADRAO)), CFG.caixas || {});
+const salvarCfg = () => gravarLS('nc.cfg', CFG);
+const fsAtual = () => CLASSE === 'tab' ? CFG.fsTab : CFG.fsTel;
+function mudarFs(d){ const k = CLASSE === 'tab' ? 'fsTab' : 'fsTel'; CFG[k] = Math.max(18, Math.min(96, CFG[k] + d)); salvarCfg(); }
+
+/* ---------------- tema claro / escuro ---------------- */
+function aplicarTema(){
+  const t = CFG.tema || (matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'escuro');
+  document.documentElement.dataset.tema = t;
+  $$('[data-tema]').forEach(b => { if (b.tagName === 'BUTTON') b.innerHTML = t === 'escuro' ? ICO_SOL : ICO_LUA; });
+  document.querySelector('meta[name=theme-color]').content = t === 'escuro' ? '#0F1B33' : '#F6F2E7';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-tema]'); if (!b) return;
+  e.stopPropagation();
+  CFG.tema = document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro'; salvarCfg(); aplicarTema();
+}, true);
+$$('[data-versao]').forEach(el => el.textContent = 'v' + VERSAO);
+aplicarTema();
+
+/* ---------------- telas ---------------- */
+let TELA = 'roteiros';
+function mostrar(id){
+  ['roteiros', 'editor', 'cam', 'previa'].forEach(t => $('#' + t).classList.toggle('oculto', t !== id));
+  TELA = id;
+  if (id !== 'cam') recarregarSePendente();
+}
+
+/* ---------------- janela (modal) ---------------- */
+let aoFecharModal = null;
+function abrirModal(html, aoFechar){
+  const anterior = aoFecharModal; aoFecharModal = null; if (anterior) anterior();
+  $('#modal-caixa').innerHTML = html; $('#modal').classList.remove('oculto'); aoFecharModal = aoFechar || null;
+  if (TP.rodando) pausar();
+}
+function fecharModal(){
+  $('#modal').classList.add('oculto'); $('#modal-caixa').innerHTML = '';
+  const f = aoFecharModal; aoFecharModal = null; if (f) f();
+}
+const modalAberto = () => !$('#modal').classList.contains('oculto');
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+
+/* =================================================================
+   ATUALIZAÇÃO DO APP
+   ================================================================= */
+let recarregarPendente = false;
+function podeRecarregar(){ return TELA !== 'cam' && TELA !== 'previa'; }
+function recarregarSePendente(){ if (recarregarPendente && podeRecarregar()){ recarregarPendente = false; location.reload(); } }
+if ('serviceWorker' in navigator){
+  const tinhaControle = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!tinhaControle || recarregou) return;       // primeira instalação: não precisa recarregar
+    recarregou = true;
+    if (podeRecarregar()) location.reload(); else recarregarPendente = true;   // no meio da gravação, espera
+  });
+}
+async function conferirVersao(){
+  try {
+    const r = await fetch('index.html?nc=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/const VERSAO\s*=\s*'([^']+)'/);
+    if (m && m[1] !== VERSAO){
+      $('#nova-versao-txt').innerHTML = `Nova versão disponível: <b>v${escapar(m[1])}</b> (você está na v${VERSAO}).`;
+      if (TELA !== 'cam') $('#nova-versao').classList.remove('oculto');
+      VERSAO_NOVA = m[1];
+    }
+  } catch {}
+}
+let VERSAO_NOVA = null;
+async function atualizarAgora(){
+  aviso('Atualizando…');
+  try {
+    if ('serviceWorker' in navigator){
+      const base = new URL('./', location.href).href;
+      for (const r of await navigator.serviceWorker.getRegistrations()) if (r.scope.startsWith(base)) await r.unregister();
+    }
+    if (window.caches) for (const k of await caches.keys()) if (k.startsWith(PREFIXO_CACHE)) await caches.delete(k);
+  } catch {}
+  location.replace(location.pathname + '?atualizado=' + Date.now());
+}
+$('#bt-atualizar-agora').onclick = atualizarAgora;
+$('#bt-nova-fechar').onclick = () => $('#nova-versao').classList.add('oculto');
+setTimeout(conferirVersao, 2500);
+setInterval(conferirVersao, 30 * 60 * 1000);
+if (location.search.includes('atualizado=')) history.replaceState(null, '', location.pathname);
+
+/* =================================================================
+   ROTEIROS (guardados no aparelho, IndexedDB)
+   ================================================================= */
+let _db = null;
+function db(){
+  if (_db) return Promise.resolve(_db);
+  return new Promise((ok, erro) => {
+    const r = indexedDB.open('nacena', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('roteiros', { keyPath: 'id' });
+    r.onsuccess = () => { _db = r.result; ok(_db); };
+    r.onerror = () => erro(r.error);
+  });
+}
+async function dbOp(modo, f){ const d = await db(); return new Promise((ok, erro) => { const tx = d.transaction('roteiros', modo); const st = tx.objectStore('roteiros'); const req = f(st); tx.oncomplete = () => ok(req && req.result); tx.onerror = () => erro(tx.error); }); }
+const listarRoteiros = () => dbOp('readonly', st => st.getAll());
+const pegarRoteiro = id => dbOp('readonly', st => st.get(id));
+const salvarRoteiro = r => dbOp('readwrite', st => st.put(r));
+const apagarRoteiro = id => dbOp('readwrite', st => st.delete(id));
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const contarPalavras = t => (t.match(/[\p{L}\p{N}]+/gu) || []).length;
+function duracao(t){ const s = Math.round(contarPalavras(t) / 140 * 60); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; }
+
+const EXEMPLO = `Olá! Este é um roteiro de teste do NaCena. Leia em voz alta, no seu ritmo, olhando para a lente da câmera.
+
+No modo Constante, o texto sobe numa velocidade fixa, que você ajusta nos botões de menos e de mais.
+
+No modo Pela voz, o texto anda enquanto você fala e para quando você faz uma pausa. Faça uma pausa agora e veja o texto parar.
+
+No modo Palavra a palavra, o app tenta acompanhar cada palavra que você lê e marca na tela onde você está.
+
+No princípio era o Verbo, e o Verbo estava com Deus, e o Verbo era Deus.
+
+Quando terminar, toque no botão vermelho para parar a gravação, confira o vídeo e salve na Fotos.`;
+
+async function desenharLista(){
+  let itens = [];
+  try { itens = await listarRoteiros(); } catch { $('#lista').innerHTML = '<p class="vazio">Não consegui abrir os roteiros guardados neste aparelho.</p>'; return; }
+  if (!itens.length && !lerLS('nc.exemplo', false)){
+    gravarLS('nc.exemplo', true);
+    await salvarRoteiro({ id: novoId(), titulo: 'Teste do NaCena', texto: EXEMPLO, criado: Date.now(), alterado: Date.now() });
+    return desenharLista();
+  }
+  itens.sort((a, b) => b.alterado - a.alterado);
+  $('#lista').innerHTML = !itens.length ? '<p class="vazio">Nenhum roteiro ainda. Toque em <b>Novo roteiro</b> ou abra um arquivo.</p>'
+    : itens.map(r => `
+    <div class="rot-item" data-id="${r.id}">
+      <h3>${escapar(r.titulo || 'Sem título')}</h3>
+      <p>${escapar(r.texto.slice(0, 220))}</p>
+      <div class="meta">${contarPalavras(r.texto)} palavras · cerca de ${duracao(r.texto)} de leitura</div>
+      <div class="linha-bt">
+        <button class="btn ouro" data-acao="gravar">● Gravar</button>
+        <button class="btn" data-acao="editar">Editar</button>
+        <button class="btn perigo" data-acao="apagar">Apagar</button>
+      </div>
+    </div>`).join('');
+}
+$('#lista').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-acao]'); if (!b) return;
+  const id = b.closest('.rot-item').dataset.id;
+  if (b.dataset.acao === 'gravar'){
+    // importante no iPhone/iPad: o áudio é preparado aqui, ainda dentro do toque
+    preparaAudio();
+    const r = await pegarRoteiro(id); if (r) abrirCamera(r);
+  } else if (b.dataset.acao === 'editar'){ abrirEditor(await pegarRoteiro(id)); }
+  else if (b.dataset.acao === 'apagar'){
+    const r = await pegarRoteiro(id);
+    if (r && confirm(`Apagar o roteiro “${r.titulo || 'Sem título'}”? Não dá para desfazer.`)){ await apagarRoteiro(id); desenharLista(); aviso('Roteiro apagado'); }
+  }
+});
+
+/* ---------------- editor ---------------- */
+let EDITANDO = null;
+function abrirEditor(r){
+  EDITANDO = r || { id: novoId(), titulo: '', texto: '', criado: Date.now() };
+  $('#ed-titulo').value = EDITANDO.titulo || ''; $('#ed-texto').value = EDITANDO.texto || '';
+  contarEditor(); mostrar('editor');
+  if (!r) setTimeout(() => $('#ed-titulo').focus(), 150);
+}
+function contarEditor(){ const t = $('#ed-texto').value; $('#ed-conta').textContent = t.trim() ? `${contarPalavras(t)} palavras · cerca de ${duracao(t)} de leitura` : ''; }
+$('#ed-texto').addEventListener('input', contarEditor);
+async function guardarEditor(){
+  const texto = $('#ed-texto').value.replace(/\r\n?/g, '\n').trim();
+  if (!texto){ aviso('Escreva ou cole o texto do roteiro.'); return null; }
+  EDITANDO.titulo = $('#ed-titulo').value.trim() || texto.split('\n')[0].slice(0, 50);
+  EDITANDO.texto = texto; EDITANDO.alterado = Date.now();
+  await salvarRoteiro(EDITANDO); return EDITANDO;
+}
+$('#ed-salvar').onclick = async () => { if (await guardarEditor()){ aviso('Roteiro salvo'); desenharLista(); mostrar('roteiros'); } };
+$('#ed-gravar').onclick = async () => { preparaAudio(); const r = await guardarEditor(); if (r){ desenharLista(); abrirCamera(r); } };
+$('#ed-voltar').onclick = () => { desenharLista(); mostrar('roteiros'); };
+$('#ed-colar').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (t){ const ta = $('#ed-texto'); ta.value = (ta.value ? ta.value + '\n\n' : '') + t; contarEditor(); } }
+  catch { aviso('Não consegui colar. Toque e segure no campo de texto e escolha Colar.'); }
+};
+$('#bt-novo').onclick = () => abrirEditor(null);
+
+/* ---------------- abrir .txt ou .docx ---------------- */
+$('#bt-abrir').onclick = () => $('#arquivo').click();
+function carregarScript(src){ return new Promise((ok, erro) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = erro; document.head.appendChild(s); }); }
+$('#arquivo').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    let texto = '';
+    if (/\.docx$/i.test(f.name)){
+      aviso('Lendo o documento…');
+      if (!window.mammoth) await carregarScript('mammoth.browser.min.js');
+      texto = (await mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() })).value;
+    } else texto = await f.text();
+    texto = texto.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (!texto){ aviso('O arquivo está vazio.'); return; }
+    abrirEditor({ id: novoId(), titulo: f.name.replace(/\.(txt|docx)$/i, ''), texto, criado: Date.now() });
+    aviso('Confira o texto e toque em Salvar.');
+  } catch { aviso('Não consegui ler esse arquivo. Use um .txt ou .docx.'); }
+};
+
+/* =================================================================
+   CÂMERA
+   ================================================================= */
+let STREAM = null, ROTEIRO = null, WAKE = null;
+
+// Posição da lente: guardada como a borda "do aparelho" (0 topo, 1 direita, 2 baixo, 3 esquerda,
+// com o aparelho em pé). Na hora de desenhar, é convertida para a borda da tela conforme o giro.
+function giro(){
+  if (typeof window.orientation === 'number') return Math.round(window.orientation / 90);
+  if (screen.orientation && typeof screen.orientation.angle === 'number') return Math.round(screen.orientation.angle / 90);
+  return 0;
+}
+const mod4 = n => ((n % 4) + 4) % 4;
+function lenteNaTela(){
+  const intrinseca = lerLS('nc.lente', CLASSE === 'tel' ? 0 : null);
+  if (intrinseca == null) return 'topo';
+  return ['topo', 'dir', 'baixo', 'esq'][mod4(intrinseca - giro())];
+}
+function escolherLente(){ if (TP.rodando) pausar(); $('#lente-escolha').classList.remove('oculto'); }
+$('#lente-escolha').addEventListener('click', e => {
+  const b = e.target.closest('[data-borda]'); if (!b) return;
+  gravarLS('nc.lente', mod4(+b.dataset.borda + giro()));
+  $('#lente-escolha').classList.add('oculto'); aplicar(); aviso('Pronto! O texto agora fica perto da lente.');
+});
+
+function restricoes(){
+  const alta = CFG.qualidade === '1080', w = alta ? 1920 : 1280, h = alta ? 1080 : 720;
+  const emPe = innerHeight > innerWidth;
+  return {
+    video: { facingMode: 'user', width: { ideal: emPe ? h : w }, height: { ideal: emPe ? w : h }, frameRate: { ideal: 30 } },
+    audio: { echoCancellation: true, noiseSuppression: true }
+  };
+}
+async function ligarCamera(){
+  // o motor de áudio é criado ANTES de pedir a câmera, ainda dentro do toque (lição do iPad)
+  preparaAudio();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    mostrarAtivar('Este navegador não deixa o app usar a câmera. Abra o NaCena pelo Safari ou pelo ícone na tela de início.'); return false;
+  }
+  try {
+    STREAM = await navigator.mediaDevices.getUserMedia(restricoes());
+  } catch (err){
+    STREAM = null;
+    mostrarAtivar(err && err.name === 'NotAllowedError'
+      ? 'A câmera ou o microfone foi bloqueado. No iPhone/iPad: Ajustes › Safari › Câmera e Microfone › Permitir. Depois toque em Ligar a câmera.'
+      : 'Não consegui ligar a câmera (' + (err && err.name || 'erro') + ').');
+    return false;
+  }
+  const v = $('#video'); v.srcObject = STREAM; try { await v.play(); } catch {}
+  STREAM.getTracks().forEach(t => t.onended = () => { if (TELA === 'cam' && STREAM){ if (GRAV.ativa) pararGravacao(); desligarCamera(); mostrarAtivar('A câmera foi desligada pelo aparelho. Toque para ligar de novo.'); } });
+  ligarAnalisador();
+  $('#cam-ativar').classList.add('oculto');
+  pedirTelaAcesa();
+  return true;
+}
+function desligarCamera(){
+  desligarAnalisador();
+  if (STREAM) STREAM.getTracks().forEach(t => { t.onended = null; t.stop(); });
+  STREAM = null; $('#video').srcObject = null;
+}
+function mostrarAtivar(txt){ $('#cam-ativar-txt').textContent = txt; $('#cam-ativar').classList.remove('oculto'); }
+$('#bt-ativar').onclick = () => ligarCamera();
+$('#bt-ativar-sair').onclick = () => fecharCamera();
+
+async function pedirTelaAcesa(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') WAKE = await navigator.wakeLock.request('screen'); } catch {} }
+function soltarTelaAcesa(){ try { WAKE && WAKE.release(); } catch {} WAKE = null; }
+
+function montarTexto(texto){
+  const html = texto.split(/\n\s*\n/).map(p => '<p>' + escapar(p.trim()).replace(/\n/g, '<br>') + '</p>').join('');
+  $('#texto').innerHTML = html;
+  TP.palavras = null; TP.k = -1;
+}
+async function abrirCamera(r){
+  ROTEIRO = r; montarTexto(r.texto);
+  $('#nova-versao').classList.add('oculto');
+  mostrar('cam'); TP.ativo = true; TP.rodando = false; TP.vel = 0; TP.y = 0; TP.esperado = -1;
+  $('#rolo').scrollTop = 0;
+  aplicar(); mostrarBarra(true); iniciarLaco();
+  if (CLASSE === 'tab' && lerLS('nc.lente', null) == null) escolherLente();
+  await ligarCamera();
+  aplicar();
+}
+function fecharCamera(){
+  if (GRAV.ativa && !confirm('A gravação está em andamento. Parar e descartar?')) return;
+  if (GRAV.ativa){ GRAV.descartar = true; pararGravacao(); }
+  pausar(); TP.ativo = false; pararFala(); desligarCamera(); soltarTelaAcesa();
+  $('#lente-escolha').classList.add('oculto'); $('#contagem').classList.add('oculto');
+  desenharLista(); mostrar('roteiros');
+  if (VERSAO_NOVA) $('#nova-versao').classList.remove('oculto');
+}
+$('#cam-sair').onclick = fecharCamera;
+
+/* =================================================================
+   TELEPROMPTER — motor da rolagem
+   ================================================================= */
+const TP = { ativo: false, rodando: false, y: 0, esperado: -1, vel: 0, t: 0, salto: null, falando: false,
+             actx: null, mic: null, rec: null, palavras: null, k: -1, ultimoAcerto: 0, ultimoOuvido: 0 };
+const rolo = () => $('#rolo');
+const linhaAtual = () => caixaAtual().linha;
+function tipoLayout(){ const l = lenteNaTela(); return (l === 'topo' || l === 'baixo') ? 'topo' : 'lado'; }
+function caixaAtual(){ return CFG.caixas[CLASSE + '-' + tipoLayout()]; }
+const linhaY = () => { const r = rolo().getBoundingClientRect(); return r.top + r.height * linhaAtual(); };
+const maxY = () => rolo().scrollHeight - rolo().clientHeight;
+const pxs = () => CFG.vel * fsAtual() * 0.05;               // velocidade em pixels por segundo
+
+function aplicar(){
+  const c = $('#cam'), cx = caixaAtual();
+  c.dataset.lente = lenteNaTela();
+  c.style.setProperty('--fs', fsAtual() + 'px');
+  c.style.setProperty('--cor', CORES[CFG.cor] || CORES.amarelo);
+  c.style.setProperty('--op', CFG.opac);
+  c.style.setProperty('--larg', cx.larg);
+  c.style.setProperty('--alt', cx.alt);
+  c.style.setProperty('--linha', cx.linha);
+  c.classList.toggle('espelho', CFG.espelho);
+  c.classList.toggle('serifa', CFG.fonte === 'serifa');
+  c.classList.toggle('ouve', CFG.modo !== 'constante');
+  $('#vel').textContent = CFG.vel;
+  $('#bt-modo').textContent = MODOS[CFG.modo];
+  $('#passo-vel').style.display = CFG.modo === 'palavras' ? 'none' : '';
+  $('[data-tp=play]').innerHTML = TP.rodando ? ICO_PAUSA : ICO_PLAY;
+  // espaço no alto (a 1ª linha desce até a faixa) e no fim (a última sobe até a faixa)
+  const r = rolo(), t = $('#texto');
+  t.style.paddingTop = Math.max(10, Math.round(r.clientHeight * cx.linha - fsAtual() * 0.8)) + 'px';
+  t.style.paddingBottom = Math.round(r.clientHeight * 0.8) + 'px';
+  if (!TP.rodando){ TP.y = r.scrollTop; }
+}
+addEventListener('resize', () => { if (TELA === 'cam'){ aplicar(); TP.k = -1; } });
+addEventListener('orientationchange', () => {
+  if (TELA !== 'cam') return;
+  if (GRAV.ativa) aviso('Evite girar o aparelho durante a gravação: o vídeo pode sair torto.', 4500);
+  setTimeout(() => { aplicar(); TP.k = -1; }, 350);
+});
+
+async function tocar(){
+  preparaAudio();
+  if (CFG.modo === 'voz' && !TP.mic && !ligarAnalisador()){ aviso('O microfone não está ligado.'); return; }
+  if (CFG.modo === 'palavras' && !ligarFala()) return;
+  TP.rodando = true; TP.y = rolo().scrollTop; TP.esperado = -1; aplicar(); esconderDepois();
+}
+function pausar(){ TP.rodando = false; TP.vel = 0; TP.falando = false; pararFala(); if (TELA === 'cam') aplicar(); mostrarBarra(true); }
+function alternar(){ TP.rodando ? pausar() : tocar(); }
+function pular(dir){
+  const r = rolo(), de = r.scrollTop, para = Math.max(0, Math.min(maxY(), de + dir * r.clientHeight * 0.22));
+  TP.salto = { de, para, t0: performance.now() };
+  if (CFG.modo === 'palavras') TP.k = -1;
+}
+let _esc = null;
+function mostrarBarra(fixa){ $('#barra').classList.remove('some'); clearTimeout(_esc); if (!fixa) esconderDepois(); }
+function esconderDepois(){ clearTimeout(_esc); _esc = setTimeout(() => { if (TP.rodando) $('#barra').classList.add('some'); }, 3500); }
+
+$('#barra').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.hasAttribute('data-ajustes')) return;
+  e.stopPropagation(); mostrarBarra(!TP.rodando);
+  const a = b.dataset.tp;
+  if (a === 'play') alternar();
+  else if (a === 'voltar') pular(-1);
+  else if (a === 'avancar') pular(1);
+  else if (a === 'vel-'){ CFG.vel = Math.max(1, CFG.vel - 1); salvarCfg(); aplicar(); }
+  else if (a === 'vel+'){ CFG.vel = Math.min(25, CFG.vel + 1); salvarCfg(); aplicar(); }
+  else if (a === 'modo'){ const lista = Object.keys(MODOS); trocarModo(lista[(lista.indexOf(CFG.modo) + 1) % lista.length]); }
+});
+// toque no texto: terço de cima volta · meio pausa/continua · terço de baixo avança
+$('#caixa').addEventListener('click', e => {
+  if (!TP.ativo) return;
+  const r = $('#caixa').getBoundingClientRect(), f = (e.clientY - r.top) / r.height;
+  mostrarBarra(!TP.rodando);
+  if (f < 1 / 3) pular(-1); else if (f > 2 / 3) pular(1); else alternar();
+});
+// toque no rosto (fora da caixa): só mostra os controles
+$('#video').addEventListener('click', () => mostrarBarra(!TP.rodando));
+// controle remoto Bluetooth ou teclado
+document.addEventListener('keydown', e => {
+  if (TELA !== 'cam' || modalAberto() || e.target.closest('input, textarea')) return;
+  if (['PageDown', 'ArrowDown', 'ArrowRight'].includes(e.key)){ e.preventDefault(); e.stopImmediatePropagation(); pular(1); }
+  else if (['PageUp', 'ArrowUp', 'ArrowLeft'].includes(e.key)){ e.preventDefault(); e.stopImmediatePropagation(); pular(-1); }
+  else if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); alternar(); }
+}, true);
+
+function trocarModo(m){
+  const rodava = TP.rodando; if (rodava) pausar();
+  CFG.modo = m; salvarCfg(); aplicar(); preparaAudio();
+  aviso(m === 'palavras' ? 'Palavra a palavra (experimental): precisa de internet.' : m === 'voz' ? 'Pela voz: o texto anda enquanto você fala.' : 'Constante: velocidade fixa.');
+  if (rodava) tocar();
+}
+
+function iniciarLaco(){ if (TP.laco) return; TP.laco = true; TP.t = 0; requestAnimationFrame(quadro); }
+function quadro(t){
+  if (!TP.ativo){ TP.laco = false; return; }
+  const dt = Math.min(0.1, (t - (TP.t || t)) / 1000); TP.t = t;
+  const l = rolo();
+  if (TP.esperado >= 0 && Math.abs(l.scrollTop - TP.esperado) > 3){ TP.y = l.scrollTop; if (CFG.modo === 'palavras') TP.k = -1; }   // rolou com o dedo
+  medirMic(t);
+  let mexeu = false;
+  const parado = modalAberto() || !$('#lente-escolha').classList.contains('oculto') || !$('#contagem').classList.contains('oculto');
+  if (TP.salto){
+    const f = Math.min(1, (t - TP.salto.t0) / 320), e = 1 - Math.pow(1 - f, 3);
+    TP.y = TP.salto.de + (TP.salto.para - TP.salto.de) * e; mexeu = true;
+    if (f >= 1) TP.salto = null;
+  } else if (TP.rodando && !parado){
+    let alvo = 0;
+    if (CFG.modo === 'constante') alvo = pxs();
+    else if (CFG.modo === 'voz') alvo = TP.falando ? pxs() : 0;
+    else if (CFG.modo === 'palavras'){
+      const r = retPalavra();
+      if (r && t - TP.ultimoAcerto < 6000){
+        const delta = r.top + r.height / 2 - linhaY();
+        TP.y += delta * Math.min(1, dt * 2.5); mexeu = Math.abs(delta) > 0.5; alvo = 0; TP.vel = 0;
+      } else if (TP.falando) alvo = pxs() * 0.7;
+    }
+    TP.vel += (alvo - TP.vel) * Math.min(1, dt * 4);
+    if (Math.abs(TP.vel) > 0.05){ TP.y += TP.vel * dt; mexeu = true; }
+  } else TP.vel = 0;
+  if (mexeu){
+    TP.y = Math.max(0, Math.min(maxY(), TP.y));
+    l.scrollTop = TP.y; TP.esperado = l.scrollTop;
+    if (TP.rodando && CFG.modo === 'constante' && TP.y >= maxY() - 1){ pausar(); aviso('Fim do roteiro'); }
+  }
+  pintarPalavra(); pintarMic(t); pintarTempo();
+  requestAnimationFrame(quadro);
+}
+
+/* =================================================================
+   MICROFONE — "Pela voz" (mede só o volume; funciona sem internet)
+   Usa o MESMO microfone da gravação.
+   ================================================================= */
+function preparaAudio(){
+  // no iPhone/iPad o áudio só liga a partir de um toque: cria agora, enquanto o dedo está na tela
+  try {
+    if (!TP.actx || TP.actx.state === 'closed'){ const C = window.AudioContext || window.webkitAudioContext; if (C) TP.actx = new C(); }
+    if (TP.actx && TP.actx.state !== 'running') TP.actx.resume();
+  } catch {}
+}
+let STREAM_AUDIO = null;      // microfone avulso (teste nos ajustes, fora da câmera)
+function ligarAnalisador(fonte){
+  if (TP.mic) return true;
+  const s = fonte || STREAM; if (!s || !TP.actx) return false;
+  const faixas = s.getAudioTracks(); if (!faixas.length) return false;
+  try {
+    if (TP.actx.state !== 'running') TP.actx.resume();
+    const src = TP.actx.createMediaStreamSource(new MediaStream(faixas)), an = TP.actx.createAnalyser();
+    an.fftSize = 2048; an.smoothingTimeConstant = 0;
+    const mudo = TP.actx.createGain(); mudo.gain.value = 0;       // o Safari só processa o que chega à saída
+    src.connect(an); an.connect(mudo); mudo.connect(TP.actx.destination);
+    const flutua = typeof an.getFloatTimeDomainData === 'function';
+    TP.mic = { src, an, mudo, flutua, buf: flutua ? new Float32Array(an.fftSize) : new Uint8Array(an.fftSize), piso: lerLS('nc.piso', 0.002), nivel: 0, maxNivel: 0, ultimaVoz: 0, inicioVoz: 0, desde: performance.now(), limiar: 0.006 };
+    $('#mic').classList.remove('erro');
+    return true;
+  } catch { $('#mic').classList.add('erro'); return false; }
+}
+function desligarAnalisador(){
+  if (TP.mic){ try { TP.mic.src.disconnect(); TP.mic.an.disconnect(); TP.mic.mudo.disconnect(); } catch {} }
+  TP.mic = null; TP.falando = false;
+}
+async function ligarMicAvulso(){
+  // para o medidor e a calibração fora da tela da câmera
+  if (TP.mic) return true;
+  preparaAudio();
+  try {
+    STREAM_AUDIO = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    return ligarAnalisador(STREAM_AUDIO);
+  } catch (err){ aviso(err && err.name === 'NotAllowedError' ? 'O microfone foi bloqueado. Ajustes › Safari › Microfone › Permitir.' : 'Não consegui ligar o microfone.'); return false; }
+}
+function desligarMicAvulso(){ if (STREAM_AUDIO){ desligarAnalisador(); STREAM_AUDIO.getTracks().forEach(t => t.stop()); STREAM_AUDIO = null; } }
+function nivelAgora(){
+  const m = TP.mic; let s = 0;
+  if (m.flutua){ m.an.getFloatTimeDomainData(m.buf); for (let i = 0; i < m.buf.length; i++) s += m.buf[i] * m.buf[i]; }
+  else { m.an.getByteTimeDomainData(m.buf); for (let i = 0; i < m.buf.length; i++){ const v = (m.buf[i] - 128) / 128; s += v * v; } }
+  const r = Math.sqrt(s / m.buf.length);
+  if (r > m.maxNivel) m.maxNivel = r;
+  return r;
+}
+function medirMic(t){
+  if (CFG.modo === 'palavras'){ TP.falando = t - TP.ultimoOuvido < 1500; return; }
+  const m = TP.mic; if (!m){ TP.falando = false; return; }
+  const rms = nivelAgora(); m.nivel = rms;
+  const limiar = Math.max(m.piso * (SENS[CFG.sens] || 3), 0.0015);
+  if (rms > limiar){
+    if (!m.inicioVoz) m.inicioVoz = t;
+    if (t - m.inicioVoz > 120){ TP.falando = true; m.ultimaVoz = t; }
+  } else {
+    m.inicioVoz = 0;
+    if (t - m.ultimaVoz > 900) TP.falando = false;
+    m.piso = rms < m.piso ? m.piso * 0.9 + rms * 0.1 : Math.min(m.piso * 1.0003, 0.05);
+  }
+  m.limiar = limiar;
+}
+let _pm = 0;
+function pintarMic(t){
+  if (t - _pm < 80) return; _pm = t;
+  const mic = $('#mic'), barras = mic.querySelectorAll('.bar i');
+  let nivel = 0;
+  if (CFG.modo === 'voz' && TP.mic) nivel = Math.min(1, TP.mic.nivel / ((TP.mic.limiar || 0.02) * 2));
+  else if (CFG.modo === 'palavras') nivel = TP.falando ? 0.4 + Math.random() * 0.5 : 0;
+  barras.forEach((b, i) => { b.style.height = (4 + Math.max(0, Math.min(1, nivel * 1.3 - i * 0.18)) * 12) + 'px'; });
+  mic.classList.toggle('voz', !!TP.falando && TP.rodando);
+  const txt = !TP.rodando ? 'pausado'
+    : CFG.modo === 'voz' ? (!TP.mic ? 'sem microfone' : TP.falando ? 'captando' : (TP.mic.maxNivel === 0 && t - TP.mic.desde > 3000) ? 'sem sinal' : 'em silêncio')
+    : (!TP.rec ? 'sem reconhecimento' : t - TP.ultimoAcerto < 2500 ? 'acompanhando' : TP.falando ? 'procurando' : 'ouvindo');
+  const rot = $('#mic-rot'); if (rot.textContent !== txt) rot.textContent = txt;
+}
+async function calibrar(){
+  if (!TP.mic && !(STREAM ? ligarAnalisador() : await ligarMicAvulso())) return;
+  aviso('Fique em silêncio por 3 segundos…', 3200);
+  const amostras = [], fim = performance.now() + 3000;
+  await new Promise(ok => { const f = () => { if (!TP.mic) return ok(); amostras.push(nivelAgora()); performance.now() < fim ? setTimeout(f, 50) : ok(); }; f(); });
+  if (!amostras.length) return;
+  amostras.sort((a, b) => a - b);
+  const piso = Math.max(0.0005, amostras[Math.floor(amostras.length * 0.6)] * 1.1);
+  gravarLS('nc.piso', piso); if (TP.mic) TP.mic.piso = piso;
+  aviso('Microfone calibrado para este ambiente');
+}
+
+/* =================================================================
+   PALAVRA A PALAVRA (reconhecimento de fala, experimental)
+   ================================================================= */
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function indexar(){
+  const lista = [], w = document.createTreeWalker($('#texto'), NodeFilter.SHOW_TEXT);
+  for (let n; (n = w.nextNode());){
+    for (const m of n.nodeValue.matchAll(/[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu)){ const x = norm(m[0]); if (x) lista.push({ n, i: m.index, f: m.index + m[0].length, w: x }); }
+  }
+  TP.palavras = lista;
+}
+const faixaDe = p => { const r = document.createRange(); r.setStart(p.n, p.i); r.setEnd(p.n, p.f); return r; };
+function retPalavra(){
+  if (TP.k < 0 || !TP.palavras || !TP.palavras[TP.k]) return null;
+  const p = TP.palavras[TP.k]; if (!p.n.isConnected){ TP.palavras = null; TP.k = -1; return null; }
+  const rs = faixaDe(p).getClientRects(); return rs.length ? rs[0] : null;
+}
+function palavraNaLinha(){
+  const lista = TP.palavras; if (!lista || !lista.length) return -1;
+  const y = linhaY(); let a = 0, b = lista.length - 1;
+  while (a < b){ const m = (a + b) >> 1, r = faixaDe(lista[m]).getBoundingClientRect(); (r.top + r.height < y) ? a = m + 1 : b = m; }
+  return a;
+}
+function lev(a, b){
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++){
+    let ant = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++){ const tmp = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, ant + (a[i - 1] === b[j - 1] ? 0 : 1)); ant = tmp; }
+  }
+  return d[b.length];
+}
+function parecida(a, b){
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false;
+  if (a.length >= 5 && b.length >= 5 && a.slice(0, 4) === b.slice(0, 4)) return true;
+  return lev(a, b) <= (Math.max(a.length, b.length) >= 7 ? 2 : 1);
+}
+function pontuar(ouv, j){
+  const lista = TP.palavras; let s = 0, jj = j;
+  for (let q = ouv.length - 1; q >= 0 && jj >= 0; q--){
+    if (parecida(ouv[q], lista[jj].w)){ s++; jj--; }
+    else if (jj > 0 && parecida(ouv[q], lista[jj - 1].w)){ s += 0.8; jj -= 2; }
+    if (j - jj > ouv.length + 3) break;
+  }
+  return s;
+}
+function acompanhar(texto){
+  if (!TP.palavras) indexar();
+  const lista = TP.palavras; if (!lista.length) return;
+  const ouv = texto.split(/\s+/).map(norm).filter(Boolean).slice(-8); if (!ouv.length) return;
+  if (TP.k < 0) TP.k = Math.max(0, palavraNaLinha() - 1);
+  const k = TP.k;
+  let melhor = -1, pont = 0;
+  for (let j = Math.max(0, k - 6); j <= Math.min(lista.length - 1, k + 60); j++){
+    const s = pontuar(ouv, j) - Math.abs(j - k) * 0.012 - (j < k ? 0.6 : 0);
+    if (s > pont){ pont = s; melhor = j; }
+  }
+  const ok = melhor >= 0 && (pont >= Math.min(2, ouv.length - 0.2) || (pont >= 0.9 && lista[melhor].w.length >= 5 && melhor >= k && melhor <= k + 4));
+  if (!ok){
+    for (let j = k + 61; j <= Math.min(lista.length - 1, k + 500); j++){ const s = pontuar(ouv, j); if (s >= 4 && s > pont){ pont = s; melhor = j; } }
+    if (pont < 4) return;
+  }
+  TP.k = melhor; TP.ultimoAcerto = performance.now();
+}
+function pintarPalavra(){
+  const el = $('#palavra');
+  const r = TP.ativo && CFG.modo === 'palavras' && TP.rodando && performance.now() - TP.ultimoAcerto < 6000 ? retPalavra() : null;
+  if (!r){ el.classList.add('oculto'); return; }
+  el.classList.remove('oculto');
+  el.style.left = (r.left - 4) + 'px'; el.style.top = (r.top - 2) + 'px';
+  el.style.width = (r.width + 8) + 'px'; el.style.height = (r.height + 4) + 'px';
+}
+function ligarFala(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){ aviso('Este aparelho não oferece reconhecimento de fala ao app. Use “Pela voz”.'); return false; }
+  if (!navigator.onLine){ aviso('Sem internet: “Palavra a palavra” precisa de conexão. Use “Pela voz”.'); return false; }
+  if (TP.rec) return true;
+  const r = new SR();
+  r.lang = 'pt-BR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+  r.onresult = e => {
+    let txt = ''; for (let i = Math.max(0, e.results.length - 2); i < e.results.length; i++) txt += ' ' + e.results[i][0].transcript;
+    TP.ultimoOuvido = performance.now(); acompanhar(txt);
+  };
+  r.onerror = ev => {
+    if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+    TP.rec = null; pausar();
+    if (GRAV.ativa) GRAV.falaFalhou = ev.error;
+    aviso(ev.error === 'not-allowed' || ev.error === 'service-not-allowed' ? 'O reconhecimento de fala foi bloqueado neste aparelho. Use “Pela voz”.'
+      : ev.error === 'network' ? 'O reconhecimento de fala precisa de internet. Use “Pela voz”.'
+      : ev.error === 'audio-capture' ? 'O microfone está ocupado pela gravação. Durante a gravação, use “Pela voz”.'
+      : 'O reconhecimento de fala parou (' + ev.error + ').', 4500);
+  };
+  r.onend = () => { if (TP.rec === r && (TP.rodando || GRAV.contando) && TP.ativo) setTimeout(() => { if (TP.rec === r) try { r.start(); } catch {} }, 250); };
+  try { r.start(); } catch { aviso('Não consegui iniciar o reconhecimento de fala.'); return false; }
+  TP.rec = r; TP.k = -1; TP.palavras = null; TP.ultimoAcerto = 0;
+  return true;
+}
+function pararFala(){ const r = TP.rec; TP.rec = null; if (r) try { r.stop(); } catch {} $('#palavra').classList.add('oculto'); }
+
+/* =================================================================
+   GRAVAÇÃO
+   ================================================================= */
+const GRAV = { ativa: false, rec: null, partes: [], inicio: 0, mime: '', blob: null, url: null, descartar: false, falaFalhou: null, contando: null };
+function formatoGravacao(){
+  if (!window.MediaRecorder) return null;
+  const op = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  for (const m of op) try { if (MediaRecorder.isTypeSupported(m)) return m; } catch {}
+  return '';
+}
+$('#gravar').onclick = () => {
+  if (GRAV.contando){ cancelarContagem(); return; }
+  if (GRAV.ativa){ pararGravacao(); return; }
+  if (!STREAM){ mostrarAtivar('Toque para ligar a câmera antes de gravar.'); return; }
+  if (formatoGravacao() === null){ aviso('Este aparelho não deixa o app gravar vídeo.'); return; }
+  // tudo o que depende do toque é ligado AGORA (áudio e reconhecimento de fala); a rolagem começa depois da contagem
+  preparaAudio();
+  if (TP.rodando) pausar();
+  if (CFG.modo === 'palavras' && !ligarFala()) return;
+  if (CFG.modo === 'voz' && !TP.mic) ligarAnalisador();
+  if (!CFG.contagem) return iniciarGravacao();
+  $('#aviso').classList.remove('mostra');
+  let n = 3; const c = $('#contagem'); c.textContent = n; c.classList.remove('oculto'); $('#gravar').classList.add('on');
+  GRAV.contando = setInterval(() => {
+    n--; if (n > 0){ c.textContent = n; return; }
+    clearInterval(GRAV.contando); GRAV.contando = null; c.classList.add('oculto'); iniciarGravacao();
+  }, 1000);
+};
+$('#contagem').onclick = () => cancelarContagem();
+function cancelarContagem(){ clearInterval(GRAV.contando); GRAV.contando = null; $('#contagem').classList.add('oculto'); $('#gravar').classList.remove('on'); pararFala(); aviso('Gravação cancelada'); }
+function iniciarGravacao(){
+  const mime = formatoGravacao();
+  const alta = CFG.qualidade === '1080';
+  let rec;
+  try { rec = new MediaRecorder(STREAM, Object.assign(mime ? { mimeType: mime } : {}, { videoBitsPerSecond: alta ? 8000000 : 5000000, audioBitsPerSecond: 128000 })); }
+  catch { try { rec = new MediaRecorder(STREAM); } catch { aviso('Não consegui começar a gravar.'); $('#gravar').classList.remove('on'); return; } }
+  Object.assign(GRAV, { ativa: true, rec, partes: [], inicio: performance.now(), mime: rec.mimeType || mime || 'video/mp4', descartar: false, falaFalhou: null });
+  rec.ondataavailable = e => { if (e.data && e.data.size) GRAV.partes.push(e.data); };
+  rec.onstop = terminouGravacao;
+  rec.onerror = () => { aviso('A gravação parou por um erro do aparelho.'); };
+  try { rec.start(1000); } catch { GRAV.ativa = false; aviso('Não consegui começar a gravar.'); $('#gravar').classList.remove('on'); return; }
+  $('#gravar').classList.add('on'); $('#rec').classList.add('on');
+  // começa a rolar junto com a gravação
+  TP.rodando = true; TP.y = rolo().scrollTop; TP.esperado = -1; aplicar(); esconderDepois();
+}
+function pararGravacao(){
+  if (!GRAV.ativa) return;
+  GRAV.ativa = false;
+  try { GRAV.rec.state !== 'inactive' && GRAV.rec.stop(); } catch { terminouGravacao(); }
+  $('#gravar').classList.remove('on'); $('#rec').classList.remove('on');
+  pausar();
+}
+function terminouGravacao(){
+  const dur = (performance.now() - GRAV.inicio) / 1000;
+  if (GRAV.descartar){ GRAV.partes = []; GRAV.descartar = false; return; }
+  if (!GRAV.partes.length){ aviso('O vídeo saiu vazio. Tente de novo.'); return; }
+  if (GRAV.url) URL.revokeObjectURL(GRAV.url);
+  GRAV.blob = new Blob(GRAV.partes, { type: GRAV.mime.split(';')[0] });
+  GRAV.url = URL.createObjectURL(GRAV.blob); GRAV.partes = []; GRAV.dur = dur;
+  abrirPrevia();
+}
+function pintarTempo(){
+  const s = GRAV.ativa ? Math.floor((performance.now() - GRAV.inicio) / 1000) : 0;
+  const txt = GRAV.ativa ? String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') : 'pronto';
+  const el = $('#rec-tempo'); if (el.textContent !== txt) el.textContent = txt;
+}
+
+/* ---------------- prévia ---------------- */
+let SALVO = false;
+function abrirPrevia(){
+  TP.ativo = false; pararFala(); desligarCamera(); soltarTelaAcesa();
+  SALVO = false;
+  const v = $('#previa-video'); v.src = GRAV.url;
+  const mb = (GRAV.blob.size / 1048576).toFixed(1), d = Math.round(GRAV.dur || 0);
+  const ext = GRAV.blob.type.includes('mp4') ? 'MP4' : 'WebM';
+  $('#previa-info').textContent = `${Math.floor(d / 60)} min ${String(d % 60).padStart(2, '0')} s · ${mb} MB · ${ext}`;
+  mostrar('previa');
+  if (GRAV.falaFalhou) setTimeout(() => aviso('Durante a gravação, o “Palavra a palavra” parou (' + GRAV.falaFalhou + '). Confira se o vídeo tem som.', 6000), 400);
+  v.onloadedmetadata = () => { if (v.videoWidth) $('#previa-info').textContent += ` · ${v.videoWidth}×${v.videoHeight}`; };
+}
+function nomeArquivo(){
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `NaCena-${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.${GRAV.blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+}
+$('#pv-salvar').onclick = async () => {
+  const f = new File([GRAV.blob], nomeArquivo(), { type: GRAV.blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [f] })){
+    try { await navigator.share({ files: [f] }); SALVO = true; }
+    catch (e){ if (e && e.name !== 'AbortError') aviso('Não consegui abrir o compartilhar. Use “Baixar o arquivo”.'); }
+  } else baixar();
+};
+function baixar(){
+  const a = document.createElement('a'); a.href = GRAV.url; a.download = nomeArquivo(); document.body.appendChild(a); a.click(); a.remove();
+  SALVO = true; aviso('Arquivo enviado para Downloads (app Arquivos).');
+}
+$('#pv-baixar').onclick = baixar;
+function sairPrevia(){ if (!SALVO && !confirm('Você ainda não salvou este vídeo. Descartar mesmo assim?')) return false; $('#previa-video').pause(); $('#previa-video').removeAttribute('src'); return true; }
+$('#pv-denovo').onclick = () => { if (!sairPrevia()) return; preparaAudio(); abrirCamera(ROTEIRO); };
+$('#pv-sair').onclick = () => { if (!sairPrevia()) return; desenharLista(); mostrar('roteiros'); if (VERSAO_NOVA) $('#nova-versao').classList.remove('oculto'); };
+
+/* ---------------- app em segundo plano ---------------- */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden'){
+    if (TP.rodando) pausar();
+    if (GRAV.contando) cancelarContagem();
+    if (GRAV.ativa){ pararGravacao(); }      // o aparelho desliga a câmera em segundo plano: salva o que já foi gravado
+  } else {
+    if (TELA === 'cam'){
+      pedirTelaAcesa();
+      if (!STREAM || STREAM.getVideoTracks().some(t => t.readyState === 'ended')){ desligarCamera(); mostrarAtivar('O app ficou em segundo plano e a câmera foi desligada. Toque para ligar de novo.'); }
+    }
+    conferirVersao();
+  }
+});
+
+/* =================================================================
+   AJUSTES
+   ================================================================= */
+document.addEventListener('click', e => { const b = e.target.closest('[data-ajustes]'); if (b){ e.stopPropagation(); abrirAjustes(); } });
+function seg(nome, opcoes, atual){ return `<div class="seg">${Object.entries(opcoes).map(([v, r]) => `<button data-${nome}="${v}" class="${String(atual) === v ? 'on' : ''}">${r}</button>`).join('')}</div>`; }
+function textoLente(){
+  const i = lerLS('nc.lente', CLASSE === 'tel' ? 0 : null);
+  if (i == null) return 'ainda não indicada';
+  return { topo: 'em cima', dir: 'à direita', baixo: 'embaixo', esq: 'à esquerda' }[lenteNaTela()] + ' (na posição atual do aparelho)';
+}
+function abrirAjustes(){
+  const cx = caixaAtual(), naCam = TELA === 'cam';
+  const cores = Object.keys(CORES).map(c => `<button data-cor="${c}" class="${c === CFG.cor ? 'on' : ''}" style="background:rgb(${CORES[c]})" title="${c}"></button>`).join('');
+  const SR = !!(window.SpeechRecognition || window.webkitSpeechRecognition), fmt = formatoGravacao();
+  const vt = STREAM && STREAM.getVideoTracks()[0], st = vt && vt.getSettings ? vt.getSettings() : null;
+  abrirModal(`
+    <h2>Ajustes <button class="icone" id="aj-fechar" title="Fechar">${ICO_X}</button></h2>
+    <p class="dica">${CLASSE === 'tab' ? 'iPad' : 'iPhone'} · NaCena v${VERSAO}. Os ajustes ficam guardados neste aparelho.</p>
+
+    <h3>Texto</h3>
+    <div class="opc"><label class="rotulo">TAMANHO DA LETRA (neste aparelho)</label>
+      <div class="passo"><button class="icone" data-fs="-2">A−</button><b id="aj-fs">${fsAtual()}</b><button class="icone" data-fs="2">A+</button></div></div>
+    <div class="opc"><label class="rotulo">FONTE</label>${seg('fonte', { sans: 'Sem serifa', serifa: 'Com serifa' }, CFG.fonte)}</div>
+    <div class="opc"><label class="rotulo">COR DO DESTAQUE</label><div class="cores">${cores}</div></div>
+
+    <h3>Caixa de texto (${tipoLayout() === 'topo' ? 'lente em cima' : 'lente do lado'})</h3>
+    <div class="opc"><label class="rotulo">TRANSPARÊNCIA DO FUNDO <b id="aj-op-v">${Math.round(CFG.opac * 100)}%</b></label>
+      <input type="range" id="aj-op" min="0" max="80" step="5" value="${Math.round(CFG.opac * 100)}">
+      <p class="dica">0% = sem fundo, só o texto. Mais alto = fundo mais escuro (no modo claro, mais branco).</p></div>
+    <div class="opc"><label class="rotulo">LARGURA <b id="aj-larg-v">${Math.round(cx.larg * 100)}%</b></label>
+      <input type="range" id="aj-larg" min="30" max="100" step="2" value="${Math.round(cx.larg * 100)}"></div>
+    <div class="opc"><label class="rotulo">ALTURA <b id="aj-alt-v">${Math.round(cx.alt * 100)}%</b></label>
+      <input type="range" id="aj-alt" min="20" max="95" step="2" value="${Math.round(cx.alt * 100)}"></div>
+    <div class="opc"><label class="rotulo">POSIÇÃO DA FAIXA DE LEITURA <b id="aj-linha-v">${Math.round(cx.linha * 100)}%</b></label>
+      <input type="range" id="aj-linha" min="15" max="70" step="1" value="${Math.round(cx.linha * 100)}">
+      <p class="dica">Medida de cima da caixa para baixo. Quanto mais perto da lente, mais natural fica o olhar.</p></div>
+
+    <h3>Câmera</h3>
+    <div class="opc"><label class="rotulo">ONDE FICA A LENTE</label>
+      <p class="dica" style="margin-bottom:8px">Agora: <b>${textoLente()}</b></p>
+      <button class="btn" id="aj-lente" ${naCam ? '' : 'disabled style="opacity:.5"'}>Indicar onde fica a câmera</button>
+      ${naCam ? '' : '<p class="dica">Abra a câmera de um roteiro para indicar.</p>'}</div>
+    <div class="opc"><label class="rotulo">QUALIDADE DO VÍDEO</label>${seg('qualidade', { '720': '720p (arquivo menor)', '1080': '1080p (melhor)' }, CFG.qualidade)}
+      <p class="dica">Vale a partir da próxima vez que a câmera ligar.</p></div>
+    <div class="opc"><label class="rotulo">CONTAGEM ANTES DE GRAVAR</label>${seg('contagem', { 'true': '3, 2, 1', 'false': 'Sem contagem' }, CFG.contagem)}</div>
+    <div class="opc"><label class="rotulo">IMAGEM NA TELA</label>${seg('espelho', { 'true': 'Como espelho', 'false': 'Sem espelhar' }, CFG.espelho)}
+      <p class="dica">Só muda o que você vê. O vídeo gravado sai sempre sem espelhar, do jeito que os outros vão ver.</p></div>
+
+    <h3>Rolagem</h3>
+    <div class="opc"><label class="rotulo">MODO</label>${seg('modo', MODOS, CFG.modo)}</div>
+    <div class="opc"><label class="rotulo">VELOCIDADE (modo Constante e Pela voz)</label>
+      <div class="passo"><button class="icone" data-v="-1">−</button><b id="aj-vel">${CFG.vel}</b><button class="icone" data-v="1">+</button></div></div>
+    <div class="opc"><label class="rotulo">SENSIBILIDADE DO MICROFONE (modo Pela voz)</label>${seg('sens', { baixa: 'Baixa', media: 'Média', alta: 'Alta' }, CFG.sens)}
+      <button class="btn" id="aj-calibrar" style="width:100%;justify-content:center;margin-top:10px">🎙 Calibrar no silêncio (3 segundos)</button>
+      <div class="medidor"><button class="btn" id="aj-testar">Testar</button><span>Microfone agora</span><div class="med"><i id="aj-nivel"></i><b id="aj-limiar"></b></div><small id="aj-med-txt">desligado</small></div>
+      <p class="dica">Faça no lugar onde vai gravar. A barra é a sua voz; o traço dourado é o ponto a partir do qual o app entende que você está falando. Em ambiente barulhento, use “Baixa”.</p></div>
+    <p class="dica">Toques no texto: terço de cima volta · meio pausa e continua · terço de baixo avança. Um controle remoto Bluetooth com setas também funciona.</p>
+
+    <h3>Diagnóstico</h3>
+    <div class="diag">
+      Gravação: <b>${fmt === null ? 'não disponível' : (fmt || 'formato padrão do aparelho')}</b><br>
+      Reconhecimento de fala: <b>${SR ? 'disponível' : 'não disponível'}</b> · Internet: <b>${navigator.onLine ? 'sim' : 'não'}</b><br>
+      Câmera agora: <b>${st && st.width ? st.width + '×' + st.height + (st.frameRate ? ' · ' + Math.round(st.frameRate) + ' qps' : '') : 'desligada'}</b><br>
+      Tela: <b>${innerWidth}×${innerHeight}</b> · giro: <b>${giro() * 90}°</b>
+    </div>
+
+    <h3>App</h3>
+    <div class="opc" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn ouro" id="aj-atualizar">⟳ Atualizar app</button>
+      <button class="btn" id="aj-creditos">Créditos</button>
+    </div>
+    <p class="dica">“Atualizar app” apaga a cópia guardada e baixa a versão mais nova publicada. Os roteiros não são apagados.</p>
+  `, () => { clearInterval(_med); if (!STREAM) desligarMicAvulso(); if (TELA === 'cam') aplicar(); });
+
+  const caixa = $('#modal-caixa');
+  caixa.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const d = b.dataset;
+    if (b.id === 'aj-fechar') return fecharModal();
+    if (b.id === 'aj-atualizar') return atualizarAgora();
+    if (b.id === 'aj-creditos') return abrirCreditos();
+    if (b.id === 'aj-lente'){ if (TELA === 'cam'){ fecharModal(); escolherLente(); } return; }
+    if (b.id === 'aj-calibrar'){ calibrar(); return; }
+    if (b.id === 'aj-testar'){ preparaAudio(); STREAM ? ligarAnalisador() : ligarMicAvulso(); return; }
+    if (d.fs){ mudarFs(+d.fs); $('#aj-fs').textContent = fsAtual(); }
+    else if (d.v){ CFG.vel = Math.max(1, Math.min(25, CFG.vel + +d.v)); $('#aj-vel').textContent = CFG.vel; }
+    else if (d.cor){ CFG.cor = d.cor; marcar(b, 'cor'); }
+    else if (d.fonte){ CFG.fonte = d.fonte; marcar(b, 'fonte'); }
+    else if (d.qualidade){ CFG.qualidade = d.qualidade; marcar(b, 'qualidade'); }
+    else if (d.contagem){ CFG.contagem = d.contagem === 'true'; marcar(b, 'contagem'); }
+    else if (d.espelho){ CFG.espelho = d.espelho === 'true'; marcar(b, 'espelho'); }
+    else if (d.sens){ CFG.sens = d.sens; marcar(b, 'sens'); }
+    else if (d.modo){ CFG.modo = d.modo; marcar(b, 'modo'); }
+    else return;
+    salvarCfg(); if (TELA === 'cam') aplicar();
+  };
+  const marcar = (b, nome) => caixa.querySelectorAll(`[data-${nome}]`).forEach(x => x.classList.toggle('on', x === b));
+  const deslizar = (id, f) => { $('#' + id).oninput = e => { const v = +e.target.value; $('#' + id + '-v').textContent = v + '%'; f(v / 100); salvarCfg(); if (TELA === 'cam') aplicar(); }; };
+  deslizar('aj-op', v => CFG.opac = v);
+  deslizar('aj-larg', v => caixaAtual().larg = v);
+  deslizar('aj-alt', v => caixaAtual().alt = v);
+  deslizar('aj-linha', v => caixaAtual().linha = v);
+  // medidor ao vivo
+  clearInterval(_med);
+  _med = setInterval(() => {
+    const n = $('#aj-nivel'); if (!n){ clearInterval(_med); return; }
+    const m = TP.mic; if (!m){ $('#aj-med-txt').textContent = 'desligado'; return; }
+    const r = nivelAgora(), lim = Math.max(m.piso * (SENS[CFG.sens] || 3), 0.0015), esc = v => Math.min(100, Math.sqrt(v / 0.2) * 100);
+    n.style.width = esc(r) + '%'; n.classList.toggle('voz', r > lim);
+    $('#aj-limiar').style.left = esc(lim) + '%';
+    $('#aj-med-txt').textContent = r > lim ? 'voz' : m.maxNivel === 0 ? 'sem sinal' : 'silêncio';
+  }, 80);
+}
+let _med = null;
+
+function abrirCreditos(){
+  abrirModal(`
+    <h2>Créditos <button class="icone" onclick="fecharModal()" title="Fechar">${ICO_X}</button></h2>
+    <p style="line-height:1.5">O <b>NaCena</b> foi criado por <b>Bispo Enéas Araújo</b> para gravar vídeos olhando para a câmera, com o texto por perto.</p>
+    <p style="line-height:1.5">Os modos de rolagem (Constante, Pela voz e Palavra a palavra) foram inspirados no <b>Textream</b>, de Fatih Kadir Akın (github.com/f/textream), licença MIT. O código do NaCena foi escrito do zero em JavaScript, sem copiar o código do Textream.</p>
+    <p style="line-height:1.5">A leitura de arquivos do Word usa a biblioteca <b>mammoth.js</b>, de Michael Williamson (licença BSD-2).</p>
+    <h3>Licença MIT do Textream</h3>
+    <div class="licenca">MIT License
+
+Copyright (c) Fatih Kadir Akın
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</div>
+    <div style="margin-top:16px"><button class="btn" id="cr-voltar">← Voltar aos ajustes</button></div>`);
+  $('#cr-voltar').onclick = () => { fecharModal(); abrirAjustes(); };
+}
+
+/* ---------------- início ---------------- */
+desenharLista();
+</script>
+</body>
+</html>
