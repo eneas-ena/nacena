@@ -1,7 +1,7 @@
 // NaCena — service worker
 // Prefixo próprio "nacena-": os apps do Bispo dividem o mesmo endereço (eneas-ena.github.io)
 // e um não pode apagar o cache do outro.
-const VERSAO = '0.1.0';
+const VERSAO = '0.2.0';
 const CACHE = 'nacena-v' + VERSAO;
 const ARQUIVOS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'mammoth.browser.min.js'];
 

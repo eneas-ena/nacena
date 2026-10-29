@@ -77,8 +77,15 @@ textarea.campo{min-height:52vh;resize:vertical;line-height:1.5}
 
 /* ---------- câmera ---------- */
 #cam{background:#000;overflow:hidden}
-#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-#cam.espelho #video{transform:scaleX(-1)}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#cam.espelho #video,#cam.espelho #quadro{transform:scaleX(-1)}
+/* o quadro mostra exatamente o que vai ser gravado (formato, corte e zoom) */
+#quadro{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#cam.direto #quadro{display:none}
+.status .chip{height:36px;padding:0 10px;border-radius:999px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+#zoom-linha{display:flex;align-items:center;gap:10px;width:min(100%,420px);padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#zoom-linha input{flex:1;accent-color:var(--ouro)}
+#zoom-linha b{min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
 #caixa{position:absolute;z-index:5;border-radius:18px;overflow:hidden;background:rgba(var(--caixa-fundo),var(--op,.45));
   width:calc(var(--larg,.9) * 100vw);height:calc(var(--alt,.42) * 100vh)}
 #cam[data-lente="topo"] #caixa{top:calc(8px + var(--st));left:50%;transform:translateX(-50%)}
@@ -223,6 +230,7 @@ textarea.campo{min-height:52vh;resize:vertical;line-height:1.5}
 <!-- ================= TELA 3: CÂMERA ================= -->
 <section class="tela oculto" id="cam" data-lente="topo">
   <video id="video" playsinline muted autoplay></video>
+  <canvas id="quadro"></canvas>
   <div id="caixa">
     <div id="rolo"><div id="texto"></div></div>
     <div id="faixa"></div>
@@ -233,9 +241,12 @@ textarea.campo{min-height:52vh;resize:vertical;line-height:1.5}
       <button class="icone" id="cam-sair" title="Voltar aos roteiros"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <span class="rec" id="rec"><i></i><span id="rec-tempo">00:00</span></span>
       <span class="mic" id="mic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="bar"><i></i><i></i><i></i><i></i><i></i></span><span id="mic-rot"></span></span>
+      <button class="chip" id="bt-formato" title="Formato do vídeo"></button>
+      <button class="chip" id="bt-zoom" title="Zoom da câmera"></button>
       <span class="versao" data-versao></span>
       <button class="icone" data-tema title="Modo claro / escuro"></button>
     </div>
+    <div id="zoom-linha" class="oculto"><span>Zoom</span><input type="range" id="zoom" min="1" max="3" step="0.05"><b id="zoom-v"></b></div>
     <div class="barra" id="barra">
       <button class="icone" data-tp="voltar" title="Voltar algumas linhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></button>
       <button class="icone play" data-tp="play" title="Rolar / pausar"></button>
@@ -295,7 +306,7 @@ textarea.campo{min-height:52vh;resize:vertical;line-height:1.5}
    Modos de rolagem inspirados no Textream (github.com/f/textream,
    de Fatih Kadir Akın, licença MIT). Escrito do zero em JavaScript.
    ================================================================= */
-const VERSAO = '0.1.0';
+const VERSAO = '0.2.0';
 const PREFIXO_CACHE = 'nacena-';
 
 /* ---------------- utilidades ---------------- */
@@ -326,9 +337,10 @@ const CAIXAS_PADRAO = {
   'tab-lado': { larg: 0.42, alt: 0.80, linha: 0.42 }
 };
 const CFG_PADRAO = { tema: null, fonte: 'sans', fsTel: 30, fsTab: 44, cor: 'amarelo', opac: 0.45, vel: 8, modo: 'constante', sens: 'media',
-  qualidade: '1080', contagem: true, espelho: true, caixas: {} };
+  qualidade: '1080', contagem: true, espelho: true, caixas: {}, formato: null, zoom: 1, gravacao: 'quadro' };
 let CFG = Object.assign({}, CFG_PADRAO, lerLS('nc.cfg', {}));
 CFG.caixas = Object.assign({}, JSON.parse(JSON.stringify(CAIXAS_PADRAO)), CFG.caixas || {});
+if (!CFG.formato) CFG.formato = CLASSE === 'tab' ? 'horizontal' : 'vertical';   // iPhone: em pé · iPad: deitado
 const salvarCfg = () => gravarLS('nc.cfg', CFG);
 const fsAtual = () => CLASSE === 'tab' ? CFG.fsTab : CFG.fsTel;
 function mudarFs(d){ const k = CLASSE === 'tab' ? 'fsTab' : 'fsTel'; CFG[k] = Math.max(18, Math.min(96, CFG[k] + d)); salvarCfg(); }
@@ -557,10 +569,11 @@ $('#lente-escolha').addEventListener('click', e => {
 });
 
 function restricoes(){
-  const alta = CFG.qualidade === '1080', w = alta ? 1920 : 1280, h = alta ? 1080 : 720;
-  const emPe = innerHeight > innerWidth;
+  // pede a imagem 4:3 (o sensor inteiro da câmera frontal): é a que mostra mais coisa.
+  // O corte para 9:16 ou 16:9 é feito depois, no quadro, do jeito que aparece na tela.
+  const alta = CFG.qualidade === '1080', w = alta ? 1920 : 1280, h = alta ? 1440 : 960;
   return {
-    video: { facingMode: 'user', width: { ideal: emPe ? h : w }, height: { ideal: emPe ? w : h }, frameRate: { ideal: 30 } },
+    video: { facingMode: 'user', width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: 4 / 3 }, frameRate: { ideal: 30 } },
     audio: { echoCancellation: true, noiseSuppression: true }
   };
 }
@@ -623,6 +636,64 @@ function fecharCamera(){
 }
 $('#cam-sair').onclick = fecharCamera;
 
+
+/* =================================================================
+   QUADRO — formato (em pé 9:16 / deitado 16:9) e zoom
+   A câmera entrega a imagem inteira; o app corta no formato escolhido,
+   aplica o zoom e grava exatamente o que aparece na tela.
+   ================================================================= */
+const QD = { cv: null, cx: null, ult: 0, fluxo: null };
+function tamanhoSaida(){
+  const alta = CFG.qualidade === '1080', g = alta ? 1920 : 1280, p = alta ? 1080 : 720;
+  return CFG.formato === 'vertical' ? { w: p, h: g } : { w: g, h: p };
+}
+function prepararQuadro(){
+  const cv = $('#quadro'), t = tamanhoSaida();
+  if (cv.width !== t.w || cv.height !== t.h){ cv.width = t.w; cv.height = t.h; }
+  QD.cv = cv; QD.cx = cv.getContext('2d', { alpha: false });
+  $('#cam').classList.toggle('direto', CFG.gravacao === 'direto');
+  $('#bt-formato').textContent = CFG.formato === 'vertical' ? '▯ 9:16' : '▭ 16:9';
+  $('#bt-zoom').textContent = '🔍 ' + CFG.zoom.toFixed(1).replace('.', ',') + '×';
+  $('#zoom').value = CFG.zoom; $('#zoom-v').textContent = CFG.zoom.toFixed(2).replace('.', ',') + '×';
+}
+// recorte da imagem da câmera: preenche o formato (sem faixas pretas) e aplica o zoom, centralizado
+function recorte(vw, vh, W, H, z){
+  const A = W / H; let sw, sh;
+  if (vw / vh > A){ sh = vh; sw = vh * A; } else { sw = vw; sh = vw / A; }
+  sw /= z; sh /= z;
+  return [(vw - sw) / 2, (vh - sh) / 2, sw, sh];
+}
+function desenharQuadro(t){
+  if (CFG.gravacao === 'direto' || !QD.cx) return;
+  if (t - QD.ult < 30) return; QD.ult = t;                 // ~30 quadros por segundo
+  const v = $('#video'); if (!v.videoWidth || v.readyState < 2) return;
+  const W = QD.cv.width, H = QD.cv.height, [sx, sy, sw, sh] = recorte(v.videoWidth, v.videoHeight, W, H, CFG.zoom);
+  try { QD.cx.drawImage(v, sx, sy, sw, sh, 0, 0, W, H); } catch {}
+}
+// o que vai para o gravador: o quadro (formato + zoom) com o som do microfone
+function fonteGravacao(){
+  if (CFG.gravacao === 'direto' || !QD.cv.captureStream) return STREAM;
+  const fv = QD.cv.captureStream(30);
+  QD.fluxo = fv;
+  return new MediaStream([...fv.getVideoTracks(), ...STREAM.getAudioTracks()]);
+}
+function pararFluxoQuadro(){ if (QD.fluxo){ QD.fluxo.getVideoTracks().forEach(t => t.stop()); QD.fluxo = null; } }
+function trocarFormato(){
+  if (GRAV.ativa || GRAV.contando){ aviso('Pare a gravação para trocar o formato.'); return; }
+  CFG.formato = CFG.formato === 'vertical' ? 'horizontal' : 'vertical'; salvarCfg(); prepararQuadro();
+  const emPe = innerHeight > innerWidth;
+  aviso(CFG.formato === 'vertical' ? 'Vídeo em pé (9:16): Reels, Stories, Status.' + (emPe ? '' : ' Dica: segure o aparelho em pé.')
+                                   : 'Vídeo deitado (16:9): YouTube.' + (emPe ? ' Dica: gire o aparelho para deitado.' : ''), 4000);
+}
+$('#bt-formato').onclick = e => { e.stopPropagation(); trocarFormato(); };
+$('#bt-zoom').onclick = e => {
+  e.stopPropagation();
+  if (CFG.gravacao === 'direto'){ aviso('O zoom só funciona com a gravação “pelo quadro” (Ajustes › Câmera).'); return; }
+  $('#zoom-linha').classList.toggle('oculto'); mostrarBarra(true);
+};
+$('#zoom').oninput = e => { CFG.zoom = Math.round(+e.target.value * 100) / 100; salvarCfg(); prepararQuadro(); };
+$('#zoom-linha').addEventListener('click', e => e.stopPropagation());
+
 /* =================================================================
    TELEPROMPTER — motor da rolagem
    ================================================================= */
@@ -646,6 +717,7 @@ function aplicar(){
   c.style.setProperty('--alt', cx.alt);
   c.style.setProperty('--linha', cx.linha);
   c.classList.toggle('espelho', CFG.espelho);
+  prepararQuadro();
   c.classList.toggle('serifa', CFG.fonte === 'serifa');
   c.classList.toggle('ouve', CFG.modo !== 'constante');
   $('#vel').textContent = CFG.vel;
@@ -661,7 +733,7 @@ function aplicar(){
 addEventListener('resize', () => { if (TELA === 'cam'){ aplicar(); TP.k = -1; } });
 addEventListener('orientationchange', () => {
   if (TELA !== 'cam') return;
-  if (GRAV.ativa) aviso('Evite girar o aparelho durante a gravação: o vídeo pode sair torto.', 4500);
+  if (GRAV.ativa) aviso('Evite girar o aparelho durante a gravação: o enquadramento muda.', 4500);
   setTimeout(() => { aplicar(); TP.k = -1; }, 350);
 });
 
@@ -702,6 +774,7 @@ $('#caixa').addEventListener('click', e => {
 });
 // toque no rosto (fora da caixa): só mostra os controles
 $('#video').addEventListener('click', () => mostrarBarra(!TP.rodando));
+$('#quadro').addEventListener('click', () => { mostrarBarra(!TP.rodando); $('#zoom-linha').classList.add('oculto'); });
 // controle remoto Bluetooth ou teclado
 document.addEventListener('keydown', e => {
   if (TELA !== 'cam' || modalAberto() || e.target.closest('input, textarea')) return;
@@ -749,7 +822,7 @@ function quadro(t){
     l.scrollTop = TP.y; TP.esperado = l.scrollTop;
     if (TP.rodando && CFG.modo === 'constante' && TP.y >= maxY() - 1){ pausar(); aviso('Fim do roteiro'); }
   }
-  pintarPalavra(); pintarMic(t); pintarTempo();
+  desenharQuadro(t); pintarPalavra(); pintarMic(t); pintarTempo();
   requestAnimationFrame(quadro);
 }
 
@@ -977,9 +1050,10 @@ function cancelarContagem(){ clearInterval(GRAV.contando); GRAV.contando = null;
 function iniciarGravacao(){
   const mime = formatoGravacao();
   const alta = CFG.qualidade === '1080';
+  const fonte = fonteGravacao();
   let rec;
-  try { rec = new MediaRecorder(STREAM, Object.assign(mime ? { mimeType: mime } : {}, { videoBitsPerSecond: alta ? 8000000 : 5000000, audioBitsPerSecond: 128000 })); }
-  catch { try { rec = new MediaRecorder(STREAM); } catch { aviso('Não consegui começar a gravar.'); $('#gravar').classList.remove('on'); return; } }
+  try { rec = new MediaRecorder(fonte, Object.assign(mime ? { mimeType: mime } : {}, { videoBitsPerSecond: alta ? 8000000 : 5000000, audioBitsPerSecond: 128000 })); }
+  catch { try { rec = new MediaRecorder(fonte); } catch { aviso('Não consegui começar a gravar.'); $('#gravar').classList.remove('on'); return; } }
   Object.assign(GRAV, { ativa: true, rec, partes: [], inicio: performance.now(), mime: rec.mimeType || mime || 'video/mp4', descartar: false, falaFalhou: null });
   rec.ondataavailable = e => { if (e.data && e.data.size) GRAV.partes.push(e.data); };
   rec.onstop = terminouGravacao;
@@ -997,6 +1071,7 @@ function pararGravacao(){
   pausar();
 }
 function terminouGravacao(){
+  pararFluxoQuadro();
   const dur = (performance.now() - GRAV.inicio) / 1000;
   if (GRAV.descartar){ GRAV.partes = []; GRAV.descartar = false; return; }
   if (!GRAV.partes.length){ aviso('O vídeo saiu vazio. Tente de novo.'); return; }
@@ -1101,6 +1176,11 @@ function abrirAjustes(){
       <p class="dica" style="margin-bottom:8px">Agora: <b>${textoLente()}</b></p>
       <button class="btn" id="aj-lente" ${naCam ? '' : 'disabled style="opacity:.5"'}>Indicar onde fica a câmera</button>
       ${naCam ? '' : '<p class="dica">Abra a câmera de um roteiro para indicar.</p>'}</div>
+    <div class="opc"><label class="rotulo">FORMATO DO VÍDEO</label>${seg('formato', { vertical: '▯ Em pé 9:16', horizontal: '▭ Deitado 16:9' }, CFG.formato)}
+      <p class="dica">Em pé para Reels, Stories e Status; deitado para o YouTube. Também dá para trocar no botão 9:16 / 16:9 da tela da câmera.</p></div>
+    <div class="opc"><label class="rotulo">ZOOM <b id="aj-zoom-v">${CFG.zoom.toFixed(2).replace('.', ',')}×</b></label>
+      <input type="range" id="aj-zoom" min="1" max="3" step="0.05" value="${CFG.zoom}">
+      <p class="dica">1× é o mais aberto que a câmera frontal consegue. Acima disso, aproxima o rosto.</p></div>
     <div class="opc"><label class="rotulo">QUALIDADE DO VÍDEO</label>${seg('qualidade', { '720': '720p (arquivo menor)', '1080': '1080p (melhor)' }, CFG.qualidade)}
       <p class="dica">Vale a partir da próxima vez que a câmera ligar.</p></div>
     <div class="opc"><label class="rotulo">CONTAGEM ANTES DE GRAVAR</label>${seg('contagem', { 'true': '3, 2, 1', 'false': 'Sem contagem' }, CFG.contagem)}</div>
@@ -1121,9 +1201,13 @@ function abrirAjustes(){
     <div class="diag">
       Gravação: <b>${fmt === null ? 'não disponível' : (fmt || 'formato padrão do aparelho')}</b><br>
       Reconhecimento de fala: <b>${SR ? 'disponível' : 'não disponível'}</b> · Internet: <b>${navigator.onLine ? 'sim' : 'não'}</b><br>
-      Câmera agora: <b>${st && st.width ? st.width + '×' + st.height + (st.frameRate ? ' · ' + Math.round(st.frameRate) + ' qps' : '') : 'desligada'}</b><br>
+      Câmera agora: <b>${st && st.width ? st.width + '×' + st.height + (st.frameRate ? ' · ' + Math.round(st.frameRate) + ' qps' : '') : 'desligada'}</b>${$('#video').videoWidth ? ' · imagem ' + $('#video').videoWidth + '×' + $('#video').videoHeight : ''}<br>
+      Vídeo gravado: <b>${CFG.gravacao === 'direto' ? 'direto da câmera' : tamanhoSaida().w + '×' + tamanhoSaida().h + ' (pelo quadro)'}</b><br>
       Tela: <b>${innerWidth}×${innerHeight}</b> · giro: <b>${giro() * 90}°</b>
     </div>
+
+    <div class="opc"><label class="rotulo">JEITO DE GRAVAR (se der problema)</label>${seg('gravacao', { quadro: 'Pelo quadro (padrão)', direto: 'Direto da câmera' }, CFG.gravacao)}
+      <p class="dica">“Pelo quadro” grava no formato e no zoom escolhidos. Use “Direto da câmera” só se o vídeo sair preto ou travando: aí o formato fica por conta do aparelho e não há zoom.</p></div>
 
     <h3>App</h3>
     <div class="opc" style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1150,6 +1234,8 @@ function abrirAjustes(){
     else if (d.qualidade){ CFG.qualidade = d.qualidade; marcar(b, 'qualidade'); }
     else if (d.contagem){ CFG.contagem = d.contagem === 'true'; marcar(b, 'contagem'); }
     else if (d.espelho){ CFG.espelho = d.espelho === 'true'; marcar(b, 'espelho'); }
+    else if (d.formato){ if (GRAV.ativa) return aviso('Pare a gravação para trocar o formato.'); CFG.formato = d.formato; marcar(b, 'formato'); }
+    else if (d.gravacao){ if (GRAV.ativa) return; CFG.gravacao = d.gravacao; marcar(b, 'gravacao'); }
     else if (d.sens){ CFG.sens = d.sens; marcar(b, 'sens'); }
     else if (d.modo){ CFG.modo = d.modo; marcar(b, 'modo'); }
     else return;
@@ -1158,6 +1244,7 @@ function abrirAjustes(){
   const marcar = (b, nome) => caixa.querySelectorAll(`[data-${nome}]`).forEach(x => x.classList.toggle('on', x === b));
   const deslizar = (id, f) => { $('#' + id).oninput = e => { const v = +e.target.value; $('#' + id + '-v').textContent = v + '%'; f(v / 100); salvarCfg(); if (TELA === 'cam') aplicar(); }; };
   deslizar('aj-op', v => CFG.opac = v);
+  $('#aj-zoom').oninput = e => { CFG.zoom = Math.round(+e.target.value * 100) / 100; $('#aj-zoom-v').textContent = CFG.zoom.toFixed(2).replace('.', ',') + '×'; salvarCfg(); if (TELA === 'cam') prepararQuadro(); };
   deslizar('aj-larg', v => caixaAtual().larg = v);
   deslizar('aj-alt', v => caixaAtual().alt = v);
   deslizar('aj-linha', v => caixaAtual().linha = v);
